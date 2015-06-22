@@ -271,7 +271,7 @@ class GroupInterfaceGenerator {
 		final List<TypeOutline> filteredInterfaces = new ArrayList<>();
 		if (interfacesForClass != null) {
 			for (final TypeOutline typeOutline : interfacesForClass) {
-				if (!typeOutline.getImplClass().fullName().equals(className)) {
+				if (typeOutline.getImplClass() != null && !typeOutline.getImplClass().fullName().equals(className)) {
 					filteredInterfaces.add(typeOutline);
 				}
 			}
@@ -316,11 +316,15 @@ class GroupInterfaceGenerator {
 				}
 				if (superInterfaceOutline != null) {
 					typeDef.addSuperInterface(superInterfaceOutline);
-					typeDef.getImplClass()._implements(superInterfaceOutline.getImplClass());
+					if (typeDef.getImplClass() != null) {
+						typeDef.getImplClass()._implements(superInterfaceOutline.getImplClass());
+					}
 					if(typeDef.getSupportInterface() != null) {
 						typeDef.getSupportInterface()._implements(superInterfaceOutline.getSupportInterface());
 					}
-					putGroupInterfaceForClass(typeDef.getImplClass().fullName(), superInterfaceOutline);
+					if (typeDef.getImplClass() != null) {
+						putGroupInterfaceForClass(typeDef.getImplClass().fullName(), superInterfaceOutline);
+					}
 				}
 			}
 		}
@@ -384,15 +388,17 @@ class GroupInterfaceGenerator {
 	}
 
 	private void generateBuilderInterface(final Map<String, BuilderOutline> builderOutlines, final DefinedInterfaceOutline interfaceOutline) throws SAXException {
-		try {
-			builderOutlines.put(interfaceOutline.getImplClass().fullName(), new BuilderOutline(interfaceOutline,
-					/* interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getFluentClassName().getInterfaceName(), ClassType.INTERFACE) */
-					interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getBuilderClassName().getInterfaceName(), ClassType.INTERFACE)
-					/*interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getWrapperClassName().getInterfaceName(), ClassType.INTERFACE),
-					interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getModifierClassName().getInterfaceName(), ClassType.INTERFACE) */
-					));
-		} catch (final JClassAlreadyExistsException e) {
-			this.pluginContext.errorHandler.error(new SAXParseException(MessageFormat.format(GroupInterfaceGenerator.RESOURCE_BUNDLE.getString("error.interface-exists"), interfaceOutline.getImplClass().fullName(), PluginContext.BUILDER_INTERFACE_NAME), interfaceOutline.getSchemaComponent().getLocator()));
+		if (interfaceOutline.getImplClass() != null) {
+			try {
+				builderOutlines.put(interfaceOutline.getImplClass().fullName(), new BuilderOutline(interfaceOutline,
+						/* interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getFluentClassName().getInterfaceName(), ClassType.INTERFACE) */
+						interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getBuilderClassName().getInterfaceName(), ClassType.INTERFACE)
+						/*interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getWrapperClassName().getInterfaceName(), ClassType.INTERFACE),
+						interfaceOutline.getImplClass()._class(JMod.NONE, this.settings.getBuilderGeneratorSettings().getModifierClassName().getInterfaceName(), ClassType.INTERFACE) */
+						));
+			} catch (final JClassAlreadyExistsException e) {
+				this.pluginContext.errorHandler.error(new SAXParseException(MessageFormat.format(GroupInterfaceGenerator.RESOURCE_BUNDLE.getString("error.interface-exists"), interfaceOutline.getImplClass().fullName(), PluginContext.BUILDER_INTERFACE_NAME), interfaceOutline.getSchemaComponent().getLocator()));
+			}
 		}
 	}
 
@@ -421,12 +427,20 @@ class GroupInterfaceGenerator {
 					final String interfaceName = this.pluginContext.outline.getModel().getNameConverter().toClassName(groupUse.getName());
 					this.pluginContext.errorHandler.error(new SAXParseException(MessageFormat.format(GroupInterfaceGenerator.RESOURCE_BUNDLE.getString("error.interface-not-found"), groupUse.getName(), interfaceName), groupUse.getLocator()));
 				} else {
-					classOutline.implClass._implements(coalesce(referencedInterfaceOutline.getSupportInterface(), referencedInterfaceOutline.getImplClass()));
+					if (definedGroupType.getImplClass() != null) {
+						classOutline.implClass._implements(coalesce(referencedInterfaceOutline.getSupportInterface(), referencedInterfaceOutline.getImplClass()));
+					} else {
+						classOutline.implClass._implements(referencedInterfaceOutline.getSupportInterface());
+					}
 					putGroupInterfaceForClass(classOutline.implClass.fullName(), referencedInterfaceOutline);
 				}
 
 			} else {
-				classOutline.implClass._implements(coalesce(definedGroupType.getSupportInterface(),definedGroupType.getImplClass()));
+				if (definedGroupType.getImplClass() != null) {
+					classOutline.implClass._implements(coalesce(definedGroupType.getSupportInterface(),definedGroupType.getImplClass()));
+				} else {
+					classOutline.implClass._implements(definedGroupType.getSupportInterface());
+				}
 				putGroupInterfaceForClass(classOutline.implClass.fullName(), definedGroupType);
 			}
 		}
@@ -509,7 +523,7 @@ class GroupInterfaceGenerator {
 	private FieldOutline generateProperty(final DefinedInterfaceOutline groupInterface, final FieldOutline implementedField) {
 		if (implementedField != null) {
 			final JMethod implementedGetter = PluginContext.findGetter(implementedField);
-			if (implementedGetter != null) {
+			if (implementedGetter != null && groupInterface.getImplClass() != null) {
 				if(this.overrideCollectionClass != null && implementedField.getPropertyInfo().isCollection()) {
 					groupInterface.getImplClass().method(JMod.NONE, this.overrideCollectionClass.narrow(((JClass)implementedGetter.type()).getTypeParameters().get(0)), implementedGetter.name());
 				} else {
