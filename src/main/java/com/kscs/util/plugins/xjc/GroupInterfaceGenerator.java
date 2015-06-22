@@ -439,23 +439,27 @@ class GroupInterfaceGenerator {
 			return null;
 		}
 
+		final String interfaceName = pluginContext.outline.getModel().getNameConverter().toClassName(groupDecl.getName());
+
 		final JPackage container = packageOutline._package();
 		final ClassOutline dummyImplementation = this.pluginContext.classesBySchemaComponent.get(PluginContext.getQName(groupDecl));
 		if (dummyImplementation == null) {
-			this.pluginContext.errorHandler.error(new SAXParseException(MessageFormat.format(GroupInterfaceGenerator.RESOURCE_BUNDLE.getString("error.no-implementation"), this.pluginContext.outline.getModel().getNameConverter().toClassName(groupDecl.getName()), groupDecl.getTargetNamespace(), groupDecl.getName()), groupDecl.getLocator()));
+			this.pluginContext.errorHandler.error(new SAXParseException(MessageFormat.format(GroupInterfaceGenerator.RESOURCE_BUNDLE.getString("error.no-implementation"), this, interfaceName, groupDecl.getTargetNamespace(), groupDecl.getName()), groupDecl.getLocator()));
 			return null;
 		}
 
-		final String interfaceName = dummyImplementation.implClass.name();
+		if (dummyImplementation != null) {
+		final String interfaceImplName = dummyImplementation.implClass.name();
 		container.remove(dummyImplementation.implClass);
 		final JDefinedClass groupInterface;
 		final JDefinedClass supportInterface;
 		try {
-			groupInterface = container._interface(JMod.PUBLIC, interfaceName);
-			supportInterface = this.settings.isGeneratingSupportInterface() ? container._interface(JMod.PUBLIC, interfaceName + this.settings.getSupportInterfaceNameSuffix())._implements(groupInterface) : null;
+			groupInterface = container._interface(JMod.PUBLIC, interfaceImplName);
+			supportInterface = this.settings.isGeneratingSupportInterface() ? container._interface(JMod.PUBLIC, interfaceImplName + this.settings.getSupportInterfaceNameSuffix())._implements(groupInterface) : null;
 		} catch (final JClassAlreadyExistsException e) {
-			this.pluginContext.errorHandler.error(new SAXParseException(MessageFormat.format(GroupInterfaceGenerator.RESOURCE_BUNDLE.getString("error.interface-exists"), interfaceName, ""), groupDecl.getLocator()));
+			this.pluginContext.errorHandler.error(new SAXParseException(MessageFormat.format(GroupInterfaceGenerator.RESOURCE_BUNDLE.getString("error.interface-exists"), interfaceImplName, ""), groupDecl.getLocator()));
 			return null;
+		}
 		}
 		final DefinedInterfaceOutline interfaceDecl = new DefinedInterfaceOutline(groupDecl, groupInterface, dummyImplementation, supportInterface);
 
